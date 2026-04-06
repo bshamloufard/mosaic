@@ -51,12 +51,17 @@ async def linq_webhook(request: Request, background_tasks: BackgroundTasks):
     timestamp = request.headers.get("X-Webhook-Timestamp", "")
     signature = request.headers.get("X-Webhook-Signature", "")
 
+    # Debug logging for webhook troubleshooting
+    logger.info(f"Webhook received: path={request.url.path}, timestamp={timestamp}, sig={signature[:20] if signature else 'none'}...")
+    logger.info(f"Webhook body preview: {body[:200]}")
+
     if not verify_linq_signature(body, timestamp, signature):
-        logger.warning("Invalid Linq webhook signature")
+        logger.warning(f"Invalid Linq webhook signature. Headers: {dict(request.headers)}")
         return JSONResponse({"error": "invalid signature"}, status_code=401)
 
     payload = await request.json()
     parsed = parse_linq_webhook(payload)
+    logger.info(f"Parsed webhook: event={parsed['event_type']}, from={parsed['from_phone']}, text={parsed['text'][:50]}")
 
     valid_events = ("message.received", "message.created", "message")
     if parsed["event_type"] not in valid_events:

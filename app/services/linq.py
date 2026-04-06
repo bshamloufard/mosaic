@@ -1,5 +1,8 @@
 import httpx
+import logging
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class LinqClient:
@@ -10,6 +13,7 @@ class LinqClient:
         self.headers = {
             "Authorization": f"Bearer {settings.linq_api_token}",
             "Content-Type": "application/json",
+            "Accept": "application/json",
         }
         self.phone_number = settings.linq_phone_number
 
@@ -20,16 +24,18 @@ class LinqClient:
         preferred_service: str = "iMessage",
         effect: dict = None,
     ) -> dict:
-        """Create a new chat and send the first message."""
+        """Create a new chat and send the first message (V3 format)."""
         payload = {
-            "to": to_phone,
             "from": self.phone_number,
-            "body": message,
+            "to": [to_phone],
+            "message": {
+                "parts": [
+                    {"type": "text", "value": message}
+                ]
+            },
         }
-        if preferred_service:
-            payload["service"] = preferred_service
         if effect:
-            payload["effect"] = effect
+            payload["message"]["effect"] = effect
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -47,16 +53,17 @@ class LinqClient:
         text: str,
         effect: dict = None,
         reply_to_message_id: str = None,
-        media_url: str = None,
     ) -> dict:
-        """Send a message to an existing chat."""
-        payload = {"body": text}
+        """Send a message to an existing chat (V3 format)."""
+        payload = {
+            "parts": [
+                {"type": "text", "value": text}
+            ]
+        }
         if effect:
             payload["effect"] = effect
         if reply_to_message_id:
-            payload["replyTo"] = reply_to_message_id
-        if media_url:
-            payload["mediaUrl"] = media_url
+            payload["reply_to"] = reply_to_message_id
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
@@ -70,12 +77,15 @@ class LinqClient:
 
     async def send_typing_indicator(self, chat_id: str) -> None:
         """Show typing bubble in the user's iMessage."""
-        async with httpx.AsyncClient() as client:
-            await client.post(
-                f"{self.base_url}/chats/{chat_id}/typing",
-                headers=self.headers,
-                timeout=10.0,
-            )
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"{self.base_url}/chats/{chat_id}/typing",
+                    headers=self.headers,
+                    timeout=10.0,
+                )
+        except Exception as e:
+            logger.warning(f"Failed to send typing indicator: {e}")
 
     async def send_reaction(self, chat_id: str, message_id: str, reaction: str) -> None:
         """Send a tapback reaction."""
