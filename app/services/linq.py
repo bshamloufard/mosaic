@@ -55,15 +55,16 @@ class LinqClient:
         reply_to_message_id: str = None,
     ) -> dict:
         """Send a message to an existing chat (V3 format)."""
-        payload = {
+        message_obj = {
             "parts": [
                 {"type": "text", "value": text}
             ]
         }
         if effect:
-            payload["effect"] = effect
+            message_obj["effect"] = effect
         if reply_to_message_id:
-            payload["reply_to"] = reply_to_message_id
+            message_obj["reply_to"] = {"message_id": reply_to_message_id, "part_index": 0}
+        payload = {"message": message_obj}
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(
