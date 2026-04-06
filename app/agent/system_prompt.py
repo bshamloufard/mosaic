@@ -13,8 +13,20 @@ async def build_system_prompt(user_id: str, pending_actions: list) -> str:
     if pending_actions:
         pending_section = "\n\nPENDING ACTIONS AWAITING USER CONFIRMATION:\n"
         for action in pending_actions:
-            pending_section += f"- [{action['action_type']}] {action['action_payload'].get('summary', 'Unknown')} (ID: {action['id']})\n"
-        pending_section += "\nIf the user says 'yes', 'confirm', 'go ahead', 'option 1/2/3', etc., execute the corresponding pending action. If they say 'no', 'cancel', 'never mind', cancel it.\n"
+            payload = action['action_payload']
+            pending_section += f"- [{action['action_type']}] {payload.get('summary', 'Unknown')}"
+            if payload.get('label'):
+                pending_section += f" at {payload['label']}"
+            if payload.get('attendees'):
+                pending_section += f" with {', '.join(payload['attendees'])}"
+            if payload.get('start'):
+                pending_section += f" (start: {payload['start']}, end: {payload['end']})"
+            pending_section += f" (Action ID: {action['id']})\n"
+        pending_section += (
+            "\nIf the user says 'yes', 'confirm', 'go ahead', 'sure', etc., IMMEDIATELY execute the pending action by calling the appropriate tool "
+            "(e.g., create_calendar_event for 'create_event' actions). Use the details from the pending action payload above. "
+            "If they say 'no', 'cancel', 'never mind', acknowledge the cancellation.\n"
+        )
 
     return f"""You are Mosaic, a personal scheduling assistant that communicates via iMessage. You manage the user's Google Calendar, send emails on their behalf, and coordinate schedules with other people.
 

@@ -88,17 +88,38 @@ async def submit_poll_response(poll_id: str, request: Request):
         best_time = poll_data["proposed_times"][best_time_idx]
 
         from app.services.linq import linq_client
-        conv_result = supabase.table("conversations").select("linq_chat_id").eq("user_id", poll_data["user_id"]).execute()
+        from app.db.messages import save_message
+        from app.db.pending_actions import create_pending_action
+
+        conv_result = supabase.table("conversations").select("id, linq_chat_id").eq("user_id", poll_data["user_id"]).execute()
 
         if conv_result.data and conv_result.data[0].get("linq_chat_id"):
+            conv = conv_result.data[0]
             names = [r["respondent_name"] for r in responses.data]
-            await linq_client.send_message(
-                conv_result.data[0]["linq_chat_id"],
+            participant_emails = [p["email"] for p in poll_data["participants"]]
+
+            notification_msg = (
                 f"📊 Everyone responded to your \"{poll_data['title']}\" poll!\n\n"
                 f"Best time: {best_time['label']}\n"
-                f"All {', '.join(names)} are available then.\n\n"
+                f"{', '.join(names)} are available then.\n\n"
                 f"Should I create the event and send invites?"
             )
+
+            # Save as assistant message so the agent has context
+            await save_message(conv["id"], "assistant", notification_msg)
+
+            # Create a pending action so the agent can execute on confirmation
+            await create_pending_action(conv["id"], "create_event", {
+                "summary": poll_data["title"],
+                "start": best_time["start"],
+                "end": best_time["end"],
+                "label": best_time["label"],
+                "attendees": participant_emails,
+                "participant_names": names,
+                "poll_id": poll_id,
+            })
+
+            await linq_client.send_message(conv["linq_chat_id"], notification_msg)
 
     return HTMLResponse("""
     <html>
