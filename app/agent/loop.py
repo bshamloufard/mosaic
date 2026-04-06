@@ -58,7 +58,7 @@ async def run_agent(
     for iteration in range(max_iterations):
         try:
             response = client.messages.create(
-                model="claude-sonnet-4-5-20250514",
+                model="claude-sonnet-4-5",
                 max_tokens=4096,
                 system=system_prompt,
                 tools=TOOL_DEFINITIONS,
@@ -131,7 +131,7 @@ async def summarize_and_trim(conversation_id: str):
     old_text = "\n".join([f"{m['role']}: {m['content']}" for m in old_messages])
 
     summary_response = client.messages.create(
-        model="claude-haiku-4-5-20250514",
+        model="claude-haiku-4-5",
         max_tokens=500,
         messages=[{
             "role": "user",
