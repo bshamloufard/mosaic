@@ -52,7 +52,7 @@ async def run_agent(
 
     system_prompt = await build_system_prompt(user_id, pending)
 
-    max_iterations = 15
+    max_iterations = 25
     final_response = ""
 
     for iteration in range(max_iterations):
@@ -114,7 +114,7 @@ async def run_agent(
     await save_message(conversation_id, "assistant", final_response)
 
     message_count = len(recent_messages)
-    if message_count >= 10:
+    if message_count >= 20:
         await summarize_and_trim(conversation_id)
 
     return final_response

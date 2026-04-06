@@ -161,9 +161,22 @@ TOOL_DEFINITIONS = [
                     "type": "boolean",
                     "description": "Whether to add a Google Meet video call link",
                     "default": False
+                },
+                "all_day": {
+                    "type": "boolean",
+                    "description": "Create as an all-day event (for PTO, OOO, sick days, vacations). Use with date_start/date_end instead of start_time/end_time.",
+                    "default": False
+                },
+                "date_start": {
+                    "type": "string",
+                    "description": "Start date for all-day events in YYYY-MM-DD format. Only used when all_day=true."
+                },
+                "date_end": {
+                    "type": "string",
+                    "description": "End date for all-day events in YYYY-MM-DD format. Only used when all_day=true. For single-day events, same as date_start."
                 }
             },
-            "required": ["summary", "start_time", "end_time"]
+            "required": ["summary"]
         }
     },
     {
@@ -288,6 +301,35 @@ TOOL_DEFINITIONS = [
                 }
             },
             "required": ["event_title", "participants", "proposed_times"]
+        }
+    },
+    {
+        "name": "batch_cancel_events",
+        "description": (
+            "Cancel multiple calendar events at once. Use this when the user wants to clear their calendar "
+            "(e.g., 'I'm sick, cancel everything today' or 'clear my afternoon'). "
+            "ALWAYS confirm with the user before executing. Shows them what will be cancelled first."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of Google Calendar event IDs to cancel"
+                },
+                "notify_attendees": {
+                    "type": "boolean",
+                    "description": "Whether to send cancellation notifications to attendees",
+                    "default": True
+                },
+                "cancellation_reason": {
+                    "type": "string",
+                    "description": "Reason for cancellation (included in notifications)",
+                    "default": ""
+                }
+            },
+            "required": ["event_ids"]
         }
     },
 ]

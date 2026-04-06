@@ -87,24 +87,36 @@ async def check_freebusy(
 async def create_event(
     user_id: str,
     summary: str,
-    start_time: str,
-    end_time: str,
+    start_time: str = "",
+    end_time: str = "",
     description: str = "",
     location: str = "",
     attendees: list[str] = None,
     send_updates: str = "all",
     add_meet_link: bool = False,
+    all_day: bool = False,
+    date_start: str = "",
+    date_end: str = "",
 ) -> dict:
     """Create a calendar event with optional attendees and Google Meet link."""
     service = await get_calendar_service(user_id)
 
-    event_body = {
-        "summary": summary,
-        "start": {"dateTime": start_time, "timeZone": "UTC"},
-        "end": {"dateTime": end_time, "timeZone": "UTC"},
-        "description": description,
-        "location": location,
-    }
+    if all_day and date_start:
+        event_body = {
+            "summary": summary,
+            "start": {"date": date_start},
+            "end": {"date": date_end or date_start},
+            "description": description,
+            "location": location,
+        }
+    else:
+        event_body = {
+            "summary": summary,
+            "start": {"dateTime": start_time, "timeZone": "UTC"},
+            "end": {"dateTime": end_time, "timeZone": "UTC"},
+            "description": description,
+            "location": location,
+        }
 
     if attendees:
         event_body["attendees"] = [{"email": e} for e in attendees]

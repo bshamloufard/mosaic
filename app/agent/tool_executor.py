@@ -56,12 +56,15 @@ async def execute_tool(tool_name: str, tool_input: dict, user_id: str, conversat
         result = await calendar_service.create_event(
             user_id,
             summary=tool_input["summary"],
-            start_time=tool_input["start_time"],
-            end_time=tool_input["end_time"],
+            start_time=tool_input.get("start_time", ""),
+            end_time=tool_input.get("end_time", ""),
             description=tool_input.get("description", ""),
             location=tool_input.get("location", ""),
             attendees=tool_input.get("attendees", []),
             add_meet_link=tool_input.get("add_meet_link", False),
+            all_day=tool_input.get("all_day", False),
+            date_start=tool_input.get("date_start", ""),
+            date_end=tool_input.get("date_end", ""),
         )
         return {"success": True, "event": result}
 
@@ -126,6 +129,20 @@ async def execute_tool(tool_name: str, tool_input: dict, user_id: str, conversat
             "poll_id": poll_id,
             "emails_sent": results,
             "poll_url": f"{settings.app_base_url}/poll/{poll_id}",
+        }
+
+    elif tool_name == "batch_cancel_events":
+        results = []
+        for event_id in tool_input["event_ids"]:
+            try:
+                await calendar_service.delete_event(user_id, event_id)
+                results.append({"event_id": event_id, "cancelled": True})
+            except Exception as e:
+                results.append({"event_id": event_id, "cancelled": False, "error": str(e)})
+        return {
+            "success": True,
+            "cancelled_count": sum(1 for r in results if r["cancelled"]),
+            "results": results,
         }
 
     else:
