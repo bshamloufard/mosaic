@@ -190,6 +190,11 @@ TOOL_DEFINITIONS = [
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "List of attendee email addresses to set on the event. Includes existing + new attendees."
+                },
+                "add_meet_link": {
+                    "type": "boolean",
+                    "description": "Whether to add a Google Meet video call link to the event",
+                    "default": False
                 }
             },
             "required": ["event_id"]

@@ -70,7 +70,10 @@ async def execute_tool(tool_name: str, tool_input: dict, user_id: str, conversat
         for key in ["summary", "start_time", "end_time", "description", "location", "attendees"]:
             if key in tool_input and tool_input[key]:
                 updates[key] = tool_input[key]
-        result = await calendar_service.update_event(user_id, tool_input["event_id"], updates)
+        add_meet = tool_input.get("add_meet_link", False)
+        result = await calendar_service.update_event(
+            user_id, tool_input["event_id"], updates, add_meet_link=add_meet
+        )
         return {"success": True, "event": result}
 
     elif tool_name == "delete_calendar_event":

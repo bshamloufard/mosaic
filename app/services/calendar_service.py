@@ -139,6 +139,7 @@ async def update_event(
     event_id: str,
     updates: dict,
     send_updates: str = "all",
+    add_meet_link: bool = False,
 ) -> dict:
     """Update an existing calendar event."""
     service = await get_calendar_service(user_id)
@@ -162,12 +163,20 @@ async def update_event(
             if email not in existing_emails:
                 existing.append({"email": email})
         event["attendees"] = existing
+    if add_meet_link and "conferenceData" not in event:
+        event["conferenceData"] = {
+            "createRequest": {
+                "requestId": f"meet-{event_id}-{datetime.now().timestamp()}",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            }
+        }
 
     result = service.events().update(
         calendarId="primary",
         eventId=event_id,
         body=event,
         sendUpdates=send_updates,
+        conferenceDataVersion=1 if add_meet_link else 0,
     ).execute()
 
     return {
@@ -175,6 +184,7 @@ async def update_event(
         "summary": result.get("summary"),
         "start": result["start"].get("dateTime"),
         "end": result["end"].get("dateTime"),
+        "meet_link": result.get("hangoutLink", ""),
     }
 
 
