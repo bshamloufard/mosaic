@@ -1,6 +1,7 @@
 import httpx
 import logging
 from app.config import settings
+from app.utils.text_format import build_text_part
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,7 @@ class LinqClient:
             "from": self.phone_number,
             "to": [to_phone],
             "message": {
-                "parts": [
-                    {"type": "text", "value": message}
-                ]
+                "parts": [build_text_part(message)]
             },
         }
         if effect:
@@ -54,11 +53,11 @@ class LinqClient:
         effect: dict = None,
         reply_to_message_id: str = None,
     ) -> dict:
-        """Send a message to an existing chat (V3 format)."""
+        """Send a message to an existing chat (V3 format).
+        Automatically converts markdown bold/italic to iMessage text_decorations.
+        """
         message_obj = {
-            "parts": [
-                {"type": "text", "value": text}
-            ]
+            "parts": [build_text_part(text)]
         }
         if effect:
             message_obj["effect"] = effect
