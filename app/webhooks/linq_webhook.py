@@ -8,8 +8,13 @@ from app.db.client import supabase
 def verify_linq_signature(request_body: bytes, timestamp: str, signature: str) -> bool:
     """
     Verify Linq webhook HMAC-SHA256 signature.
+    Signed payload format: "{timestamp}.{body}"
+    Signature is raw hex digest (no prefix).
     Reject if timestamp is older than 5 minutes (replay protection).
     """
+    if not timestamp or not signature:
+        return False
+
     try:
         ts = int(timestamp)
         if abs(time.time() - ts) > 300:
@@ -17,13 +22,17 @@ def verify_linq_signature(request_body: bytes, timestamp: str, signature: str) -
     except (ValueError, TypeError):
         return False
 
+    # Linq signs: "{timestamp}.{raw_body}"
+    message = f"{timestamp}.{request_body.decode('utf-8')}"
     expected = hmac.new(
-        settings.linq_webhook_secret.encode(),
-        request_body,
+        settings.linq_webhook_secret.encode('utf-8'),
+        message.encode('utf-8'),
         hashlib.sha256,
     ).hexdigest()
 
-    return hmac.compare_digest(f"sha256={expected}", signature)
+    # Linq sends raw hex digest, handle optional sha256= prefix too
+    clean_signature = signature.removeprefix("sha256=")
+    return hmac.compare_digest(expected, clean_signature)
 
 
 async def is_duplicate_webhook(message_id: str) -> bool:
@@ -46,39 +55,51 @@ def parse_linq_webhook(payload: dict) -> dict:
     """
     Parse a Linq webhook payload into a normalized message object.
 
-    DEFENSIVE PARSING: Linq's payload structure can vary between sandbox
-    and production, and across API versions. This parser handles known variants:
+    V3 API (2026-02-03 schema) format:
+    {
+      "event_type": "message.received",
+      "event_id": "...",
+      "data": {
+        "chat": {"id": "...", "owner_handle": {"handle": "+1..."}},
+        "id": "message-uuid",
+        "sender_handle": {"handle": "+1..."},
+        "service": "iMessage",
+        "parts": [{"type": "text", "value": "Hello"}]
+      }
+    }
 
-    Variant A (CareSupport/production docs):
-    {"event_type": "message.created", "data": {"chat_id": "...", "message": {"id": "...", "parts": [{"type": "text", "value": "..."}], "from": "+1..."}}}
-
-    Variant B (sandbox/webhook style):
-    {"event_type": "message.received", "data": {"chatId": "...", "messageId": "...", "text": "...", "from": "+1...", "service": "iMessage"}}
-
-    Variant C (flat body style seen in some integrations):
-    {"type": "message", "chatId": "...", "body": "...", "from": "+1..."}
+    Also handles legacy flat variants for backwards compatibility.
     """
     event_type = payload.get("event_type", payload.get("type", ""))
     data = payload.get("data", {})
-    message = data.get("message", {})
 
+    # --- Chat ID ---
+    # V3: data.chat.id
+    chat = data.get("chat", {})
     chat_id = (
-        data.get("chat_id")
+        chat.get("id")
+        or data.get("chat_id")
         or data.get("chatId")
         or payload.get("chatId")
         or ""
     )
 
+    # --- Message ID ---
+    # V3: data.id
+    message = data.get("message", {})
     message_id = (
-        message.get("id")
+        data.get("id")
+        or data.get("event_id")
+        or payload.get("event_id")
+        or message.get("id")
         or data.get("messageId")
-        or data.get("message_id")
-        or payload.get("messageId")
         or ""
     )
 
+    # --- Text content ---
+    # V3: data.parts[].type=="text" -> .value
     text = ""
-    parts = message.get("parts", [])
+    parts = data.get("parts", []) or message.get("parts", [])
     for part in parts:
         if part.get("type") == "text":
             text = part.get("value", "")
@@ -88,16 +109,21 @@ def parse_linq_webhook(payload: dict) -> dict:
     if not text:
         text = message.get("body", data.get("body", payload.get("body", "")))
 
+    # --- Sender phone ---
+    # V3: data.sender_handle.handle
+    sender_handle = data.get("sender_handle", {})
     from_phone = (
-        message.get("from")
+        sender_handle.get("handle")
+        or message.get("from")
         or data.get("from")
         or payload.get("from")
         or ""
     )
 
+    # --- Service ---
     service = (
-        message.get("service")
-        or data.get("service")
+        data.get("service")
+        or message.get("service")
         or payload.get("service")
         or "unknown"
     )

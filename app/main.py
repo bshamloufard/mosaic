@@ -41,14 +41,15 @@ async def health():
 
 
 @app.post("/webhook/linq")
+@app.post("/webhook")
 async def linq_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     Receive incoming iMessage via Linq webhook.
     CRITICAL: Return 200 within 2 seconds, process async.
     """
     body = await request.body()
-    timestamp = request.headers.get("X-Linq-Timestamp", "")
-    signature = request.headers.get("X-Linq-Signature", "")
+    timestamp = request.headers.get("X-Webhook-Timestamp", "")
+    signature = request.headers.get("X-Webhook-Signature", "")
 
     if not verify_linq_signature(body, timestamp, signature):
         logger.warning("Invalid Linq webhook signature")
