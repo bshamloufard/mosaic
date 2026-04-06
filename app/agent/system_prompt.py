@@ -28,12 +28,26 @@ async def build_system_prompt(user_id: str, pending_actions: list) -> str:
             "If they say 'no', 'cancel', 'never mind', acknowledge the cancellation.\n"
         )
 
+    # Build a 14-day calendar reference so the LLM never gets days wrong
+    from datetime import timedelta
+    calendar_ref = ""
+    for i in range(14):
+        day = now.date() + timedelta(days=i)
+        label = "TODAY" if i == 0 else ("TOMORROW" if i == 1 else "")
+        line = f"  {day.strftime('%a %b %d')} ({day.strftime('%A')})"
+        if label:
+            line += f" ← {label}"
+        calendar_ref += line + "\n"
+
     return f"""You are Mosaic, a personal scheduling assistant that communicates via iMessage. You manage the user's Google Calendar, send emails on their behalf, and coordinate schedules with other people.
 
 CURRENT CONTEXT:
 - Current time: {now.strftime("%A, %B %d, %Y at %I:%M %p %Z")}
 - User's timezone: {user.get("timezone", "America/Los_Angeles")}
 - User's name: {user.get("display_name", "there")}
+
+DATE REFERENCE (use this — do NOT guess day-of-week):
+{calendar_ref}
 {pending_section}
 
 CORE RULES — FOLLOW THESE EXACTLY:
