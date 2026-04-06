@@ -67,12 +67,15 @@ class LinqClient:
         payload = {"message": message_obj}
 
         async with httpx.AsyncClient() as client:
+            logger.info(f"Sending message to chat {chat_id}: {str(payload)[:200]}")
             resp = await client.post(
                 f"{self.base_url}/chats/{chat_id}/messages",
                 headers=self.headers,
                 json=payload,
                 timeout=30.0,
             )
+            if resp.status_code >= 400:
+                logger.error(f"Linq send_message error {resp.status_code}: {resp.text}")
             resp.raise_for_status()
             return resp.json()
 
