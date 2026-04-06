@@ -155,6 +155,13 @@ async def update_event(
         event["description"] = updates["description"]
     if "location" in updates:
         event["location"] = updates["location"]
+    if "attendees" in updates:
+        existing = event.get("attendees", [])
+        existing_emails = {a["email"] for a in existing}
+        for email in updates["attendees"]:
+            if email not in existing_emails:
+                existing.append({"email": email})
+        event["attendees"] = existing
 
     result = service.events().update(
         calendarId="primary",

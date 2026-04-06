@@ -170,8 +170,9 @@ TOOL_DEFINITIONS = [
         "name": "update_calendar_event",
         "description": (
             "Update an existing calendar event. Use this when the user wants to reschedule, "
-            "rename, or change details of an event. You need the event_id which you can get "
-            "from list_calendar_events. ALWAYS confirm changes with the user before executing."
+            "rename, change details, or add/remove attendees. You need the event_id which you can get "
+            "from list_calendar_events. ALWAYS confirm changes with the user before executing. "
+            "To invite someone to an existing event, use the attendees field with their email."
         ),
         "input_schema": {
             "type": "object",
@@ -184,7 +185,12 @@ TOOL_DEFINITIONS = [
                 "start_time": {"type": "string", "description": "New start time in ISO 8601 (optional)"},
                 "end_time": {"type": "string", "description": "New end time in ISO 8601 (optional)"},
                 "description": {"type": "string", "description": "New description (optional)"},
-                "location": {"type": "string", "description": "New location (optional)"}
+                "location": {"type": "string", "description": "New location (optional)"},
+                "attendees": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "List of attendee email addresses to set on the event. Includes existing + new attendees."
+                }
             },
             "required": ["event_id"]
         }

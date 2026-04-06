@@ -67,7 +67,7 @@ async def execute_tool(tool_name: str, tool_input: dict, user_id: str, conversat
 
     elif tool_name == "update_calendar_event":
         updates = {}
-        for key in ["summary", "start_time", "end_time", "description", "location"]:
+        for key in ["summary", "start_time", "end_time", "description", "location", "attendees"]:
             if key in tool_input and tool_input[key]:
                 updates[key] = tool_input[key]
         result = await calendar_service.update_event(user_id, tool_input["event_id"], updates)
